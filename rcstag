@@ -44,7 +44,7 @@ if [ x"$1" = x--help ] ; then usage ; exit 0 ; fi
 PATH=/usr/local/bin:/bin:/usr/bin:/usr/ucb:$PATH
 export PATH
 
-DATE=`date` || exit
+DATE=`date -u +'%Y-%m-%d %T'` || exit
 # Check whether we have an RCS subdirectory, so we can have the right
 # prefix for our paths.
 if test -d RCS
