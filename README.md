@@ -7,6 +7,14 @@ The idea is to run `rcstag` each time there is a new revision in any of the
 files in the directory.
 
 
+## Installation
+`cp rcstag ~/bin` or `ln -s "$(pwd)/rcstag" ~/bin/`.
+
+
+## Usage
+`rcstag --help`.
+
+
 ## Credits
 `rcstag` is modified from `rcsfreeze` obtained from RCS 5.10.0 (released:
 2020-10-20).
