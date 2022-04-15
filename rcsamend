@@ -1,0 +1,95 @@
+#!/bin/sh
+# rcsamend — Edit an RCS log message in a text editor.
+#
+# Copyright 2022 Foo Chuan Wei
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+set -e
+
+print_help() {
+    printf 'usage: %s [options] file\n\n' "$(basename "$0")"
+    printf 'Edit an RCS log message in a text editor.\n\n'
+    printf 'Arguments:\n'
+    printf '  file        The name of the RCS file.\n\n'
+    printf 'Options:\n'
+    printf '  -r REV      Edit the log message for the specified revision.\n'
+    printf '              Omit this option to select the latest revision.\n'
+    printf '  -h, --help  Display this help message.\n\n'
+    printf 'Environment variables:\n'
+    printf '  EDITOR      The text editor to use to edit the log message.\n'
+}
+
+_err() {
+    printf '%s\n' "$(basename "$0"): $1" >&2
+    exit 1
+}
+
+# Parse command line arguments.
+revision=
+while :; do
+    case "$1" in
+        -h|--help)
+            print_help
+            exit
+            ;;
+        -r*)
+            # Handle both ways of specifying the revision number.
+            # i.e. '-r1.1' and '-r' '1.1'
+            revision="${1#-r}"
+            shift
+            if [ -z "$revision" ]; then
+                revision="$2"
+                [ -z "$revision" ] && _err 'Missing revision number'
+                shift
+            fi
+            ;;
+        --)  # End of all options.
+            shift
+            break
+            ;;
+        -?*)
+            printf 'WARNING: Unknown option (ignored): %s\n' "$1" >&2
+            shift
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+filename="$1"
+[ -z "$filename" ] && _err 'Missing filename argument'
+[ "$#" -gt 1 ] && _err 'Too many filename arguments'
+
+# Extract the log message.
+message="$(rlog "-r${revision}" "$filename" | \
+            awk 'a&&/^-{28}$/||/^={77}$/{exit} /^date: /{a=1; next} a')"
+[ -z "$message" ] && _err 'Invalid revision number'
+
+# Create temporary file containing the existing log message, and open it in a
+# text editor.
+tmpfile="$(printf 'mkstemp(template)' | \
+            m4 -D template="${TMPDIR:-/tmp}/rcsamend.XXXXXX")"
+trap 'rm -f -- "$tmpfile"' EXIT
+printf '%s\n' "$message" > "$tmpfile"
+"${EDITOR:-vi}" "$tmpfile"
+
+# Change the log message if the user has made changes.
+new_message="$(cat "$tmpfile")"
+if [ "$new_message" != "$message" ]; then
+    rcs "-m${revision}:${new_message}" "$filename"
+else
+    printf 'No changes\n'
+fi
