@@ -75,7 +75,7 @@ filename="$1"
 
 # Extract the log message.
 message="$(rlog "-r${revision}" "$filename" | \
-            awk 'a&&/^-{28}$/||/^={77}$/{exit} /^date: /{a=1; next} a')"
+            awk 'a&&/^-{28}$/||/^={77}$/{exit} !a&&/^date: /{a=1; next} a')"
 [ -z "$message" ] && _err 'Invalid revision number'
 
 # Create temporary file containing the existing log message, and open it in a
